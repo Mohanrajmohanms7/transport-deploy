@@ -1,0 +1,93 @@
+Hi,
+
+Please deploy our Transport ERP (Frontend + Backend + PostgreSQL).
+
+========== GITHUB REPOS (Private) ==========
+1) Frontend : https://github.com/Mohanrajmohanms7/transport-frontend
+2) Backend  : https://github.com/Mohanrajmohanms7/transport-backend
+3) Deploy   : https://github.com/Mohanrajmohanms7/transport-deploy
+
+If you cannot open them, ask me for GitHub access.
+
+
+========== 1) CLONE ON SERVER ==========
+mkdir -p ~/fleetflow && cd ~/fleetflow
+git clone https://github.com/Mohanrajmohanms7/transport-frontend.git
+git clone https://github.com/Mohanrajmohanms7/transport-backend.git
+git clone https://github.com/Mohanrajmohanms7/transport-deploy.git
+
+Folder must look like this:
+fleetflow/
+  transport-frontend/
+  transport-backend/
+  transport-deploy/
+
+
+========== 2) CREATE ENV FILE ==========
+cd ~/fleetflow/transport-deploy
+cp .env.prod.example .env.prod
+nano .env.prod
+
+Change these values:
+- POSTGRES_PASSWORD
+- JWT_SECRET
+- APP_BOOTSTRAP_ADMIN_PASSWORD
+- APP_BOOTSTRAP_ENABLED=true   (first time)
+
+
+========== 3) FIREWALL ==========
+Open only:
+- Port 22 (SSH)
+- Port 80 (HTTP)
+
+Do NOT open:
+- 5432 (Database)
+- 8080 (Backend)
+
+
+========== 4) START APPLICATION ==========
+cd ~/fleetflow/transport-deploy
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+docker compose -f docker-compose.prod.yml ps
+
+Open: http://SERVER_PUBLIC_IP
+
+Note:
+- DB is NOT on my laptop
+- DB runs in Docker on the same server
+- Frontend calls /api and nginx sends it to backend
+
+
+========== 5) LOAD SAME DEMO DATA (AKS SEED) ==========
+Wait until backend is healthy, then run:
+
+cd ~/fleetflow/transport-backend/database/seed
+
+docker compose -f ~/fleetflow/transport-deploy/docker-compose.prod.yml exec -T postgres \
+  psql -U transport_admin -d transport_erp < 000_reset_all.sql
+
+docker compose -f ~/fleetflow/transport-deploy/docker-compose.prod.yml exec -T postgres \
+  psql -U transport_admin -d transport_erp < 099_run_all.sql
+
+
+========== 6) DISABLE BOOTSTRAP AFTER SEED ==========
+Edit .env.prod:
+APP_BOOTSTRAP_ENABLED=false
+
+Then restart backend:
+cd ~/fleetflow/transport-deploy
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d backend
+
+
+========== 7) LOGIN ==========
+admin       / Admin@123
+superadmin  / Super@123
+manager     / Manager@123
+
+
+========== DOCS ==========
+transport-deploy/README.md
+transport-deploy/docs/DEPLOY_FREE_ORACLE.md
+
+
+Please share the public IP / URL after deploy. Thank you!
