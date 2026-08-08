@@ -1,0 +1,66 @@
+Hi AWS / DevOps,
+
+Login issue fix for Platform Admin (SaaS owner).
+
+========== WHY ==========
+1) admin / Admin@123 works, but goes to /setup
+   → That is COMPANY ERP first-time setup (empty business data).
+   → Platform Admin is a DIFFERENT page: /platform-admin
+   → Needs role SUPER_ADMIN + frontend build that includes Platform Admin.
+
+2) superadmin / Super@123 returns 400
+   → User missing on AWS, OR password hash was changed incorrectly.
+   → Do NOT rename username in DB without setting the correct BCrypt hash.
+
+Do NOT put passwords in Flyway migrations for production.
+Use the one-time script below.
+
+
+========== 1) RUN THIS SCRIPT (on EC2) ==========
+cd ~/fleetflow/transport-deploy
+
+# If scripts folder not present yet:
+#   git pull origin main
+
+docker exec -i transport-postgres psql -U transport_admin -d transport_erp \
+  < scripts/fix_superadmin_platform_access.sql
+
+Expected verify output includes:
+  superadmin | ACTIVE | SUPER_ADMIN
+  admin      | ACTIVE | SUPER_ADMIN
+
+
+========== 2) LOGIN ==========
+URL: http://PUBLIC_IP/login
+
+  Username: superadmin
+  Password: Super@123
+
+Then open:
+  http://PUBLIC_IP/platform-admin
+
+(Also works: admin / Admin@123 after this script, then /platform-admin)
+
+
+========== 3) IF /platform-admin GOES TO LOGIN AGAIN ==========
+Frontend is old (missing Platform Admin route). Rebuild from branch ui-restyle-pass:
+
+cd ~/fleetflow/transport-frontend
+git fetch origin
+git checkout ui-restyle-pass
+git pull origin ui-restyle-pass
+
+cd ~/fleetflow/transport-deploy
+docker compose -f docker-compose.prod.yml --env-file .env.prod build --no-cache frontend
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d frontend
+
+Hard refresh browser (Ctrl+F5), login again.
+
+
+========== 4) ABOUT /setup ==========
+/setup is normal when company has no vehicles/drivers/customers yet.
+SaaS owner should use /platform-admin, not stay on /setup.
+Company clients will use /setup later when onboarding their own ERP.
+
+
+Thanks.
